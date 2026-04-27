@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────────────────────
+# Inventra AI — Docker Compose
+# Full stack: Backend API + Frontend Static Server
+#
+# Quick Start:
+#   docker-compose up --build
+#
+# Akses:
+#   Backend API  : http://localhost:8000
+#   API Docs     : http://localhost:8000/docs
+#   Dashboard    : http://localhost:3000
+# ─────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+
+  # ── Backend: FastAPI ML Engine ──────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inventra-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - PYTHONUNBUFFERED=1
+      # Azure OpenAI (opsional — isi dengan nilai asli)
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
+      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY:-}
+      - AZURE_DEPLOYMENT_NAME=${AZURE_DEPLOYMENT_NAME:-gpt-4o}
+      # Anthropic Claude (fallback)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    volumes:
+      - backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+    networks:
+      - inventra-net
+
+  # ── Frontend: Nginx Static Server ───────────────────────────
+  frontend:
+    image: nginx:alpine
+    container_name: inventra-frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - inventra-net
+
+# ── Networks ─────────────────────────────────────────────────
+networks:
+  inventra-net:
+    driver: bridge
+    name: inventra-network
+
+# ── Volumes ──────────────────────────────────────────────────
+volumes:
+  backend_logs:
+    name: inventra-backend-logs

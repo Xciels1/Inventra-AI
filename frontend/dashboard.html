@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Inventra AI — Intelligent Inventory Decision Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg0:#070d18;--bg1:#0d1626;--bg2:#111e33;--bg3:#172540;
+    --border:#1e3050;--border2:#243a5e;
+    --text:#e8edf5;--text2:#8da0b8;--text3:#4d6480;
+    --teal:#00d4aa;--teal2:#00b391;--teal-dim:#00d4aa22;
+    --amber:#f5a623;--amber-dim:#f5a62320;
+    --red:#f0485a;--red-dim:#f0485a22;
+    --blue:#4a9eff;--blue-dim:#4a9eff20;
+    --purple:#a78bfa;--purple-dim:#a78bfa22;
+    --green:#22c55e;--green-dim:#22c55e22;
+    --severity-normal:#22c55e;--severity-low:#eab308;
+    --severity-medium:#f97316;--severity-high:#f0485a;--severity-critical:#a78bfa;
+    --font-ui:'DM Sans',sans-serif;--font-mono:'JetBrains Mono',monospace;
+    --r4:4px;--r8:8px;--r12:12px;--r16:16px;
+  }
+  html,body{height:100%;background:var(--bg0);color:var(--text);font-family:var(--font-ui);font-size:14px;line-height:1.5}
+  #root{min-height:100vh}
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-track{background:var(--bg1)}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+  .app{display:grid;grid-template-rows:auto 1fr;min-height:100vh}
+
+  /* HEADER */
+  .header{background:var(--bg1);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .header-brand{display:flex;align-items:center;gap:12px}
+  .header-logo{width:32px;height:32px;background:var(--teal);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:600;font-size:13px;color:#000;letter-spacing:-0.5px}
+  .header-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-0.2px}
+  .header-sub{font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-top:1px}
+  .header-right{display:flex;align-items:center;gap:16px}
+  .health-pill{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:5px 12px}
+  .health-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+  .health-text{font-size:12px;font-family:var(--font-mono);color:var(--text2)}
+  .health-score{font-size:13px;font-weight:600;color:var(--teal);font-family:var(--font-mono)}
+  .refresh-btn{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s}
+  .refresh-btn:hover{border-color:var(--teal);color:var(--teal)}
+  .timestamp{font-size:11px;color:var(--text3);font-family:var(--font-mono)}
+
+  /* MAIN LAYOUT */
+  .main{padding:20px 24px;display:flex;flex-direction:column;gap:20px}
+
+  /* KPI CARDS */
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .kpi{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r12);padding:16px 20px;position:relative;overflow:hidden;transition:border-color .2s}
+  .kpi:hover{border-color:var(--border2)}
+  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+  .kpi.teal::before{background:var(--teal)}
+  .kpi.amber::before{background:var(--amber)}
+  .kpi.red::before{background:var(--red)}
+  .kpi.blue::before{background:var(--blue)}
+  .kpi-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-family:var(--font-mono)}
+  .kpi-value{font-size:28px;font-weight:600;font-family:var(--font-mono);line-height:1}
+  .kpi-sub{font-size:11px;color:var(--text3);margin-top:8px}
+  .kpi-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);padding:2px 6px;border-radius:4px;margin-top:8px}
+  .kpi-badge.up{background:var(--green-dim);color:var(--green)}
+  .kpi-badge.down{background:var(--red-dim);color:var(--red)}
+
+  /* GRID PANELS */
+  .grid-2{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+  .grid-bottom{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+
+  /* PANEL */
+  .panel{background:var(--bg1);border:1px solid var(--border);border-radius:var(--r16);overflow:hidden}
+  .panel-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .panel-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+  .panel-dot{width:8px;height:8px;border-radius:50%}
+  .panel-body{padding:20px}
+  .panel-actions{display:flex;align-items:center;gap:8px}
+
+  /* SKU SELECTOR */
+  .sku-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg2)}
+  .sku-tab{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-family:var(--font-mono);cursor:pointer;transition:all .15s;white-space:nowrap}
+  .sku-tab:hover{border-color:var(--border2);color:var(--text)}
+  .sku-tab.active{background:var(--teal);border-color:var(--teal);color:#000;font-weight:600}
+
+  /* CHART */
+  .chart-wrap{padding:20px;position:relative}
+  .chart-container{position:relative;height:220px}
+  .chart-legend{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+  .legend-dot{width:8px;height:8px;border-radius:2px}
+  .chart-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+  .meta-item{text-align:center}
+  .meta-val{font-size:16px;font-weight:600;font-family:var(--font-mono)}
+  .meta-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-top:2px}
+
+  /* ANOMALY PANEL */
+  .anomaly-list{display:flex;flex-direction:column;gap:1px;max-height:420px;overflow-y:auto}
+  .anomaly-item{padding:12px 20px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border)}
+  .anomaly-item:last-child{border-bottom:none}
+  .anomaly-item:hover{background:var(--bg2)}
+  .anomaly-item.active{background:var(--bg2)}
+  .severity-badge{padding:2px 7px;border-radius:4px;font-size:10px;font-family:var(--font-mono);font-weight:600;white-space:nowrap;align-self:start;margin-top:2px}
+  .sev-Normal{background:var(--green-dim);color:var(--green)}
+  .sev-Low{background:#eab30820;color:#eab308}
+  .sev-Medium{background:#f9731620;color:#f97316}
+  .sev-High{background:var(--red-dim);color:var(--red)}
+  .sev-Critical{background:var(--purple-dim);color:var(--purple)}
+  .anomaly-sku{font-size:12px;font-family:var(--font-mono);color:var(--teal)}
+  .anomaly-name{font-size:12px;color:var(--text);font-weight:500;margin-top:1px}
+  .anomaly-rules{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.4}
+  .anomaly-stats{display:flex;gap:8px;margin-top:6px}
+  .stat-chip{font-size:10px;font-family:var(--font-mono);padding:2px 6px;border-radius:3px;background:var(--bg0);border:1px solid var(--border)}
+
+  /* DECISION WIDGET */
+  .decision-card{padding:20px;display:flex;flex-direction:column;gap:16px}
+  .decision-action{display:flex;align-items:center;gap:12px}
+  .action-badge{padding:6px 16px;border-radius:8px;font-size:14px;font-weight:700;font-family:var(--font-mono);letter-spacing:.5px}
+  .action-RESTOCKING{background:var(--blue-dim);color:var(--blue);border:1px solid var(--blue)44}
+  .action-HOLD{background:var(--red-dim);color:var(--red);border:1px solid var(--red)44}
+  .action-REDISTRIBUSI{background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber)44}
+  .action-MONITOR{background:var(--green-dim);color:var(--green);border:1px solid var(--green)44}
+  .confidence-wrap{flex:1}
+  .confidence-label{font-size:10px;color:var(--text3);font-family:var(--font-mono);margin-bottom:5px}
+  .confidence-bar{height:6px;background:var(--bg0);border-radius:3px;overflow:hidden}
+  .confidence-fill{height:100%;border-radius:3px;transition:width .5s ease}
+  .confidence-val{font-size:11px;font-family:var(--font-mono);color:var(--teal);margin-top:4px}
+  .decision-sku{font-size:11px;font-family:var(--font-mono);color:var(--text3)}
+  .decision-detail{font-size:12px;color:var(--text2);line-height:1.6;padding:12px;background:var(--bg2);border-radius:var(--r8);border-left:3px solid var(--teal)}
+  .reasoning-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:var(--font-mono);margin-bottom:10px}
+  .reasoning-trail{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto}
+  .reasoning-step{display:flex;gap:8px;font-size:11px;color:var(--text2);line-height:1.5;padding:6px 8px;border-radius:var(--r4);background:var(--bg2)}
+  .key-factors{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .factor-item{background:var(--bg2);border-radius:var(--r4);padding:8px 10px;border:1px solid var(--border)}
+  .factor-key{font-size:10px;color:var(--text3);margin-bottom:2px}
+  .factor-val{font-size:12px;font-family:var(--font-mono);color:var(--text);font-weight:500}
+  .feedback-row{display:flex;gap:8px;padding-top:4px}
+  .fb-btn{flex:1;padding:8px;border-radius:var(--r8);border:1px solid var(--border);background:transparent;font-size:12px;font-family:var(--font-mono);cursor:pointer;transition:all .15s;font-weight:500}
+  .fb-btn.approve{color:var(--green);border-color:var(--green)44}
+  .fb-btn.approve:hover{background:var(--green-dim)}
+  .fb-btn.reject{color:var(--red);border-color:var(--red)44}
+  .fb-btn.reject:hover{background:var(--red-dim)}
+  .fb-btn.active-approve{background:var(--green-dim);border-color:var(--green)}
+  .fb-btn.active-reject{background:var(--red-dim);border-color:var(--red)}
+  .priority-tag{font-size:10px;padding:3px 8px;border-radius:4px;background:var(--amber-dim);color:var(--amber);font-family:var(--font-mono);font-weight:600}
+  .risk-tag{font-size:10px;padding:3px 8px;border-radius:4px;font-family:var(--font-mono);font-weight:600}
+  .risk-Kritis{background:var(--purple-dim);color:var(--purple)}
+  .risk-Tinggi{background:var(--red-dim);color:var(--red)}
+  .risk-Sedang{background:var(--amber-dim);color:var(--amber)}
+  .risk-Rendah{background:var(--green-dim);color:var(--green)}
+
+  /* CHAT */
+  .chat-body{display:flex;flex-direction:column;height:380px}
+  .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .chat-msg{max-width:90%;padding:10px 14px;border-radius:var(--r12);font-size:12px;line-height:1.6;animation:fadeUp .2s ease}
+  .chat-msg.user{align-self:flex-end;background:var(--teal);color:#000;border-bottom-right-radius:4px;font-weight:500}
+  .chat-msg.bot{align-self:flex-start;background:var(--bg2);color:var(--text);border-bottom-left-radius:4px;border:1px solid var(--border)}
+  .chat-msg.typing{color:var(--text3);font-style:italic}
+  .chat-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--bg2)}
+  .chat-input{flex:1;background:var(--bg0);border:1px solid var(--border);border-radius:var(--r8);padding:8px 12px;color:var(--text);font-family:var(--font-ui);font-size:13px;outline:none;transition:border-color .15s}
+  .chat-input:focus{border-color:var(--teal)}
+  .chat-input::placeholder{color:var(--text3)}
+  .chat-send{background:var(--teal);border:none;border-radius:var(--r8);padding:8px 14px;color:#000;font-weight:600;font-size:12px;cursor:pointer;transition:background .15s;white-space:nowrap}
+  .chat-send:hover{background:var(--teal2)}
+  .chat-send:disabled{opacity:.4;cursor:not-allowed}
+  .quick-btns{display:flex;gap:6px;padding:8px 16px;border-top:1px solid var(--border);overflow-x:auto;background:var(--bg1)}
+  .quick-btn{padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:11px;cursor:pointer;white-space:nowrap;transition:all .1s;flex-shrink:0}
+  .quick-btn:hover{border-color:var(--teal);color:var(--teal)}
+
+  /* LOADER */
+  .loader{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text3);font-family:var(--font-mono);font-size:12px;gap:10px}
+  .spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .6s linear infinite}
+
+  /* TAG */
+  .tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-mono);padding:2px 7px;border-radius:3px}
+  .tag-teal{background:var(--teal-dim);color:var(--teal)}
+  .tag-amber{background:var(--amber-dim);color:var(--amber)}
+  .tag-red{background:var(--red-dim);color:var(--red)}
+
+  .section-title{font-size:11px;font-family:var(--font-mono);color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+  .divider{height:1px;background:var(--border);margin:12px 0}
+
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  .pulse{animation:pulse 1.5s ease infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useRef, useCallback} = React;
+const API = 'http://localhost:8000';
+
+// ──────────────────────────────────────────────
+// MOCK DATA — digunakan saat backend offline
+// ──────────────────────────────────────────────
+const MOCK = {
+  summary:{
+    total_skus:8, anomaly_active:4, health_score:50.0,
+    action_distribution:{RESTOCKING:7,HOLD:0,REDISTRIBUSI:1,MONITOR:0},
+    severity_distribution:{Critical:1,High:2,Medium:1,Low:2,Normal:2},
+    critical_skus:[
+      {sku_id:'SKU-006',sku_name:'Pneumatic Valve',action:'RESTOCKING',priority:'Segera',risk:'Kritis',confidence:89.7},
+      {sku_id:'SKU-004',sku_name:'Circuit Board Module',action:'RESTOCKING',priority:'Segera',risk:'Kritis',confidence:88.2},
+      {sku_id:'SKU-003',sku_name:'Steel Rod 12mm',action:'RESTOCKING',priority:'Segera',risk:'Tinggi',confidence:81.5},
+      {sku_id:'SKU-007',sku_name:'Rubber Gasket Set',action:'REDISTRIBUSI',priority:'Dalam 3 Hari',risk:'Sedang',confidence:74.3},
+    ],
+    generated_at: new Date().toISOString()
+  },
+  skus:[
+    {sku_id:'SKU-001',sku_name:'Bearing Assembly Type A',category:'Komponen Mesin',severity:'Low',severity_color:'#eab308'},
+    {sku_id:'SKU-002',sku_name:'Hydraulic Seal Kit',category:'Suku Cadang',severity:'Normal',severity_color:'#22c55e'},
+    {sku_id:'SKU-003',sku_name:'Steel Rod 12mm',category:'Bahan Baku',severity:'Medium',severity_color:'#f97316'},
+    {sku_id:'SKU-004',sku_name:'Circuit Board Module',category:'Elektronik',severity:'High',severity_color:'#f0485a'},
+    {sku_id:'SKU-005',sku_name:'Aluminum Sheet 2mm',category:'Bahan Baku',severity:'Low',severity_color:'#eab308'},
+    {sku_id:'SKU-006',sku_name:'Pneumatic Valve',category:'Komponen Mesin',severity:'Critical',severity_color:'#a78bfa'},
+    {sku_id:'SKU-007',sku_name:'Rubber Gasket Set',category:'Suku Cadang',severity:'High',severity_color:'#f0485a'},
+    {sku_id:'SKU-008',sku_name:'Stainless Bolt M8',category:'Fastener',severity:'Normal',severity_color:'#22c55e'},
+  ],
+  decisions:{
+    'SKU-006':{sku_id:'SKU-006',sku_name:'Pneumatic Valve',category:'Komponen Mesin',recommended_action:'RESTOCKING',action_priority:'Segera',confidence_score:89.7,risk_level:'Kritis',
+      reasoning_path:['📉 Stok diprediksi menyentuh reorder point dalam 3 hari — melampaui batas kritis (7 hari).',
+        '🚨 Anomali terdeteksi: Reject rate 16.2% melampaui ambang kritis (≥15%)',
+        '📊 Tren level stok menunjukkan penurunan konsisten 30 hari terakhir.',
+        '🔴 KEPUTUSAN: RESTOCKING SEGERA — proyeksi stok kritis lebih pendek dari lead time supplier (18 hari).'],
+      key_factors:{'Stok Saat Ini':'127 unit','Reject Rate':'16.2%','Rasio Hold':'3.1%','Hari Hingga Kritis':'3 hari','Rekomendasi Restock':'480 unit','Tren Stok':'Turun','Anomali Severity':'Critical','Lead Time Supplier':'18 hari','Akurasi Prediksi':'89%'},
+      action_detail:'Segera buat purchase order untuk 480 unit Pneumatic Valve. Jadwalkan pengiriman sebelum 2025-02-04 untuk memenuhi lead time 18 hari.',
+      estimated_impact:'Mengambil tindakan ini dapat mencegah gangguan produksi dan menghemat estimasi Rp 103.200.000 dari potensi kerugian.',
+      estimated_loss_if_ignored:'Estimasi kerugian produksi ≈ Rp 2.150.000/hari akibat stock-out',
+      feedback_status:'pending',generated_at:new Date().toISOString()},
+    'SKU-007':{sku_id:'SKU-007',sku_name:'Rubber Gasket Set',category:'Suku Cadang',recommended_action:'REDISTRIBUSI',action_priority:'Dalam 3 Hari',confidence_score:74.3,risk_level:'Sedang',
+      reasoning_path:['✅ Proyeksi stok dalam 14 hari ke depan masih di atas reorder point.',
+        '🚨 Anomali terdeteksi: Rasio hold 32.5% melampaui ambang kritis (≥25%)',
+        '🟡 KEPUTUSAN: REDISTRIBUSI dipilih karena penumpukan hold mengindikasikan bottleneck QC.'],
+      key_factors:{'Stok Saat Ini':'980 unit','Reject Rate':'2.8%','Rasio Hold':'32.5%','Hari Hingga Kritis':'Tidak ada','Rekomendasi Restock':'0 unit','Tren Stok':'Stabil','Anomali Severity':'High','Lead Time Supplier':'5 hari','Akurasi Prediksi':'82%'},
+      action_detail:'Identifikasi gudang atau lini produksi dengan kebutuhan Rubber Gasket Set aktif. Prioritaskan redistribusi dari lokasi hold tertinggi ke lini yang membutuhkan.',
+      estimated_impact:'Redistribusi dapat mengurai bottleneck QC dan membebaskan 320+ unit untuk lini produksi aktif.',
+      estimated_loss_if_ignored:'Estimasi kerugian dari idle inventory: Rp 10.240.000 per minggu',
+      feedback_status:'pending',generated_at:new Date().toISOString()},
+  }
+};
+
+function genMockChart(skuId, days=30){
+  const hist=[], fore=[];
+  let stock = ({
+    'SKU-001':1100,'SKU-002':650,'SKU-003':400,'SKU-004':180,
+    'SKU-005':1200,'SKU-006':150,'SKU-007':900,'SKU-008':3800,
+  }[skuId]||800);
+  const consumption = ({
+    'SKU-001':32,'SKU-002':18,'SKU-003':50,'SKU-004':14,
+    'SKU-005':40,'SKU-006':9,'SKU-007':27,'SKU-008':110,
+  }[skuId]||30);
+  const reorder = stock * 0.3;
+  const d = new Date(); d.setDate(d.getDate()-days);
+  for(let i=0;i<days;i++){
+    const c = Math.max(1,consumption+Math.random()*12-6);
+    stock = Math.max(0, stock-c);
+    if(stock<reorder*0.8 && i%15===0) stock += stock*0.5;
+    hist.push({date:new Date(d.getTime()+i*86400000).toISOString().slice(0,10),
+      stock_level:Math.round(stock),daily_consumption:Math.round(c),
+      reject_qty:Math.round(stock*0.025),is_anomaly:false,type:'historical'});
+  }
+  for(let i=1;i<=14;i++){
+    const c = Math.max(1,consumption+Math.random()*8-4);
+    stock = Math.max(0, stock-c);
+    fore.push({date:new Date(Date.now()+i*86400000).toISOString().slice(0,10),
+      stock_level:Math.round(stock),daily_consumption:Math.round(c),type:'forecast'});
+  }
+  return {historical:hist,forecast:fore,reorder_point:Math.round(reorder),
+    sku_name:MOCK.skus.find(s=>s.sku_id===skuId)?.sku_name||skuId};
+}
+
+function genMockAnomalies(){
+  return MOCK.skus.map(s=>({
+    sku_id:s.sku_id,sku_name:s.sku_name,is_anomaly:s.severity!=='Normal',
+    severity:s.severity,severity_color:s.severity_color,
+    current_reject_rate:s.severity==='Critical'?0.162:s.severity==='High'?0.09:0.025,
+    current_hold_ratio:s.severity==='Critical'?0.031:s.severity==='High'?0.325:0.04,
+    current_stock_level:Math.round(Math.random()*800+100),
+    triggered_rules:s.severity==='Normal'?[]:
+      ['Stok mendekati reorder point','Reject rate melebihi rata-rata historis'].slice(0,s.severity==='Low'?1:2),
+    anomaly_types:s.severity==='Critical'?['reject_critical']:s.severity==='High'?['hold_high']:s.severity==='Medium'?['reject_spike']:['low_stock'],
+    detected_at:new Date().toISOString()
+  }));
+}
+
+// ──────────────────────────────────────────────
+// API HELPERS
+// ──────────────────────────────────────────────
+async function apiFetch(path, opts={}){
+  const r = await fetch(API+path, {signal:opts.signal, method:opts.method||'GET',
+    headers:{'Content-Type':'application/json'}, body:opts.body});
+  if(!r.ok) throw new Error(r.status);
+  const j = await r.json();
+  return j.data ?? j;
+}
+
+// ──────────────────────────────────────────────
+// STOCK CHART COMPONENT
+// ──────────────────────────────────────────────
+function StockChart({data, skuName}){
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(()=>{
+    if(!data||!ref.current) return;
+    if(chartRef.current) chartRef.current.destroy();
+    const hist = data.historical||[];
+    const fore = data.forecast||[];
+    const all = [...hist,...fore];
+    const labels = all.map(d=>d.date.slice(5));
+    const stocks = all.map(d=>d.stock_level);
+    const consumption = all.map(d=>d.daily_consumption);
+    const splitIdx = hist.length;
+    const reorder = data.reorder_point||0;
+    chartRef.current = new Chart(ref.current, {
+      type:'line',
+      data:{
+        labels,
+        datasets:[
+          {label:'Stok Aktual',data:stocks.slice(0,splitIdx).concat(Array(fore.length).fill(null)),
+            borderColor:'#00d4aa',backgroundColor:'#00d4aa15',fill:true,tension:0.3,
+            borderWidth:2,pointRadius:0,pointHoverRadius:4},
+          {label:'Proyeksi Stok',data:Array(splitIdx).fill(null).concat(stocks.slice(splitIdx)),
+            borderColor:'#4a9eff',backgroundColor:'#4a9eff10',fill:true,tension:0.3,
+            borderWidth:2,borderDash:[5,4],pointRadius:0,pointHoverRadius:4},
+          {label:'Konsumsi Harian',data:consumption,
+            borderColor:'#f5a623',backgroundColor:'transparent',tension:0.3,
+            borderWidth:1.5,pointRadius:0,yAxisID:'y2'},
+          {label:'Reorder Point',data:Array(all.length).fill(reorder),
+            borderColor:'#f0485a',backgroundColor:'transparent',
+            borderWidth:1,borderDash:[3,3],pointRadius:0},
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{legend:{display:false},
+          tooltip:{backgroundColor:'#111e33',borderColor:'#1e3050',borderWidth:1,
+            titleColor:'#8da0b8',bodyColor:'#e8edf5',padding:10,
+            callbacks:{label:c=>' '+c.dataset.label+': '+c.raw}}},
+        scales:{
+          x:{grid:{color:'#1e305060'},ticks:{color:'#4d6480',font:{size:10},maxTicksLimit:8}},
+          y:{grid:{color:'#1e305060'},ticks:{color:'#4d6480',font:{size:10}},
+            title:{display:true,text:'Unit',color:'#4d6480',font:{size:10}}},
+          y2:{position:'right',grid:{display:false},
+            ticks:{color:'#4d6480',font:{size:10}},
+            title:{display:true,text:'Konsumsi',color:'#4d6480',font:{size:10}}},
+        }
+      }
+    });
+    return()=>{ if(chartRef.current) chartRef.current.destroy(); };
+  },[data]);
+  if(!data) return <div className="loader"><div className="spin pulse"></div> Memuat chart...</div>;
+  const lastStock = data.historical?.slice(-1)[0]?.stock_level||0;
+  const avgConsumption = Math.round(data.historical?.reduce((a,d)=>a+d.daily_consumption,0)/Math.max(data.historical?.length,1)||0);
+  const daysLeft = Math.round(lastStock/Math.max(avgConsumption,1));
+  return (
+    <div className="chart-wrap">
+      <div className="chart-legend">
+        {[['#00d4aa','Stok Aktual'],['#4a9eff','Proyeksi'],['#f5a623','Konsumsi'],['#f0485a','Reorder Point']].map(([c,l])=>(
+          <div key={l} className="legend-item"><div className="legend-dot" style={{background:c}}></div>{l}</div>
+        ))}
+      </div>
+      <div className="chart-container">
+        <canvas ref={ref} role="img" aria-label={`Grafik tren stok ${skuName}`}></canvas>
+      </div>
+      <div className="chart-meta">
+        <div className="meta-item">
+          <div className="meta-val" style={{color:'#00d4aa'}}>{lastStock.toLocaleString('id')}</div>
+          <div className="meta-lbl">Stok Saat Ini</div>
+        </div>
+        <div className="meta-item">
+          <div className="meta-val" style={{color:'#f5a623'}}>{avgConsumption.toLocaleString('id')}</div>
+          <div className="meta-lbl">Avg Konsumsi/hari</div>
+        </div>
+        <div className="meta-item">
+          <div className="meta-val" style={{color:daysLeft<7?'#f0485a':daysLeft<14?'#f5a623':'#22c55e'}}>{daysLeft}</div>
+          <div className="meta-lbl">Estimasi Hari Tersisa</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// KPI CARD
+// ──────────────────────────────────────────────
+function KPICard({label, value, sub, accent, badge, badgeDir}){
+  return (
+    <div className={`kpi ${accent}`}>
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value" style={{color:`var(--${accent==='teal'?'teal':accent==='amber'?'amber':accent==='red'?'red':'blue'})`}}>{value}</div>
+      {sub && <div className="kpi-sub">{sub}</div>}
+      {badge && <div className={`kpi-badge ${badgeDir}`}>{badgeDir==='up'?'▲':'▼'} {badge}</div>}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// ANOMALY PANEL
+// ──────────────────────────────────────────────
+function AnomalyPanel({anomalies, selectedSku, onSelect}){
+  const sorted = [...(anomalies||[])].sort((a,b)=>{
+    const o={Critical:0,High:1,Medium:2,Low:3,Normal:4};
+    return (o[a.severity]||4)-(o[b.severity]||4);
+  });
+  return (
+    <div className="panel" style={{height:'100%'}}>
+      <div className="panel-header">
+        <div className="panel-title">
+          <div className="panel-dot" style={{background:'#f0485a',boxShadow:'0 0 6px #f0485a'}}></div>
+          Active Anomalies
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          {[['Critical','#a78bfa'],['High','#f0485a'],['Medium','#f97316']].map(([s,c])=>{
+            const count = anomalies?.filter(a=>a.severity===s).length||0;
+            return count>0 && <span key={s} className="tag" style={{background:c+'22',color:c,fontSize:9}}>{count} {s}</span>;
+          })}
+        </div>
+      </div>
+      <div className="anomaly-list">
+        {sorted.length===0 && <div className="loader">Tidak ada anomali aktif ✅</div>}
+        {sorted.map(a=>(
+          <div key={a.sku_id} className={`anomaly-item ${selectedSku===a.sku_id?'active':''}`} onClick={()=>onSelect(a.sku_id)}>
+            <span className={`severity-badge sev-${a.severity}`}>{a.severity}</span>
+            <div>
+              <div className="anomaly-sku">{a.sku_id}</div>
+              <div className="anomaly-name">{a.sku_name}</div>
+              {a.triggered_rules?.length>0 && (
+                <div className="anomaly-rules">{a.triggered_rules[0]}</div>
+              )}
+              <div className="anomaly-stats">
+                <span className="stat-chip" style={{color:'#f0485a'}}>R:{(a.current_reject_rate*100).toFixed(1)}%</span>
+                <span className="stat-chip" style={{color:'#f5a623'}}>H:{(a.current_hold_ratio*100).toFixed(1)}%</span>
+                <span className="stat-chip">{a.current_stock_level?.toLocaleString('id')} unit</span>
+              </div>
+            </div>
+            <div style={{fontSize:9,color:'var(--text3)',fontFamily:'var(--font-mono)',marginTop:2,textAlign:'right'}}>
+              {a.anomaly_types?.[0]?.replace('_',' ')||''}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// DECISION WIDGET
+// ──────────────────────────────────────────────
+function DecisionWidget({decision, onFeedback}){
+  const [fb, setFb] = useState(null);
+  if(!decision) return <div className="loader"><div className="spin"></div> Memuat analisis...</div>;
+  const d = decision;
+  const confColor = d.confidence_score>=80?'#22c55e':d.confidence_score>=60?'#f5a623':'#f0485a';
+  const handleFb = (type)=>{
+    setFb(type);
+    onFeedback(d.sku_id, d.recommended_action, type);
+  };
+  return (
+    <div className="decision-card">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+        <div>
+          <div style={{fontSize:10,color:'var(--text3)',fontFamily:'var(--font-mono)',marginBottom:4}}>REKOMENDASI AI</div>
+          <div style={{fontSize:12,color:'var(--text2)'}}>{d.sku_id} — <span style={{color:'var(--text)'}}>{d.sku_name}</span></div>
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <span className={`priority-tag`}>{d.action_priority}</span>
+          <span className={`risk-tag risk-${d.risk_level}`}>{d.risk_level}</span>
+        </div>
+      </div>
+      <div className="decision-action">
+        <div className={`action-badge action-${d.recommended_action}`}>{d.recommended_action}</div>
+        <div className="confidence-wrap">
+          <div className="confidence-label">CONFIDENCE SCORE</div>
+          <div className="confidence-bar">
+            <div className="confidence-fill" style={{width:d.confidence_score+'%',background:confColor}}></div>
+          </div>
+          <div className="confidence-val">{d.confidence_score.toFixed(1)}%</div>
+        </div>
+      </div>
+      <div className="decision-detail">{d.action_detail}</div>
+      {d.estimated_loss_if_ignored && (
+        <div style={{fontSize:11,color:'#f0485a',background:'#f0485a12',padding:'8px 12px',borderRadius:6,borderLeft:'2px solid #f0485a'}}>
+          ⚠ {d.estimated_loss_if_ignored}
+        </div>
+      )}
+      <div>
+        <div className="reasoning-title">Reasoning Trail (XAI)</div>
+        <div className="reasoning-trail">
+          {d.reasoning_path?.map((step,i)=>(
+            <div key={i} className="reasoning-step">
+              <span style={{color:'var(--text3)',fontFamily:'var(--font-mono)',fontSize:10,flexShrink:0}}>
+                {String(i+1).padStart(2,'0')}
+              </span>
+              <span>{step}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="reasoning-title">Key Factors</div>
+        <div className="key-factors">
+          {Object.entries(d.key_factors||{}).slice(0,6).map(([k,v])=>(
+            <div key={k} className="factor-item">
+              <div className="factor-key">{k}</div>
+              <div className="factor-val">{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div className="reasoning-title" style={{marginBottom:8}}>Feedback Loop (Continuous Learning)</div>
+        <div className="feedback-row">
+          <button className={`fb-btn approve ${fb==='approved'?'active-approve':''}`}
+            onClick={()=>handleFb('approved')} disabled={fb!==null}>
+            {fb==='approved'?'✓ Disetujui':'✓ Setuju'}
+          </button>
+          <button className={`fb-btn reject ${fb==='rejected'?'active-reject':''}`}
+            onClick={()=>handleFb('rejected')} disabled={fb!==null}>
+            {fb==='rejected'?'✗ Ditolak':'✗ Tolak'}
+          </button>
+        </div>
+        {fb && <div style={{fontSize:11,color:'var(--text3)',marginTop:6,textAlign:'center'}}>
+          Terima kasih! Feedback dicatat untuk peningkatan model AI.
+        </div>}
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// CHAT WINDOW
+// ──────────────────────────────────────────────
+const QUICK = ['Barang apa yang paling berisiko?','Status inventaris hari ini?','SKU mana yang perlu dipesan?','Anomali apa yang sedang aktif?'];
+function ChatWindow({backendAvailable}){
+  const [msgs, setMsgs] = useState([
+    {role:'bot',text:'Selamat datang! Saya Inventra AI Assistant. Saya siap membantu menganalisis data inventaris Anda. Silakan ajukan pertanyaan dalam Bahasa Indonesia. 👋'}
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sessionId] = useState('session_'+Date.now());
+  const endRef = useRef(null);
+  useEffect(()=>{ endRef.current?.scrollIntoView({behavior:'smooth'}); },[msgs]);
+
+  const sendMsg = async(text)=>{
+    if(!text.trim()||loading) return;
+    setMsgs(m=>[...m,{role:'user',text}]);
+    setInput('');
+    setLoading(true);
+    try{
+      let response='';
+      if(backendAvailable){
+        const data = await apiFetch('/api/v1/chat',{method:'POST',
+          body:JSON.stringify({message:text,session_id:sessionId})});
+        response = data.message;
+      } else {
+        await new Promise(r=>setTimeout(r,800));
+        response = getRuleBasedResponse(text);
+      }
+      setMsgs(m=>[...m,{role:'bot',text:response}]);
+    }catch(e){
+      setMsgs(m=>[...m,{role:'bot',text:'Maaf, terjadi kesalahan saat menghubungi asisten. Pastikan backend berjalan di port 8000.'}]);
+    }
+    setLoading(false);
+  };
+
+  const getRuleBasedResponse=(msg)=>{
+    const m=msg.toLowerCase();
+    if(m.includes('risiko')||m.includes('berisiko')) return '⚠️ Berdasarkan analisis terkini:\n\n**SKU-006 (Pneumatic Valve)** adalah yang paling berisiko — severity Critical.\n• Reject rate 16.2% melampaui ambang kritis\n• Stok akan habis dalam 3 hari (lead time 18 hari!)\n• Rekomendasi: RESTOCKING SEGERA\n\nKonfidence AI: 89.7%';
+    if(m.includes('status')||m.includes('kondisi')||m.includes('hari ini')) return '📊 **Ringkasan Inventaris Saat Ini:**\n\n• Total SKU: 8 terpantau\n• Anomali aktif: 4 SKU memerlukan perhatian\n• Health Score: 50%\n• Butuh Restocking: 7 SKU\n• Perlu Redistribusi: 1 SKU\n\n⚠️ Ada 2 SKU dengan risiko kritis yang butuh tindakan segera!';
+    if(m.includes('pesan')||m.includes('restock')||m.includes('order')) return '📦 SKU prioritas restocking:\n\n1. **SKU-006** Pneumatic Valve — Segera (kritis dalam 3 hari)\n2. **SKU-004** Circuit Board Module — Segera (lead time 21 hari!)\n3. **SKU-003** Steel Rod 12mm — Minggu ini\n\nTotal 7 SKU memerlukan purchase order. Prioritaskan SKU-006 dan SKU-004 terlebih dahulu.';
+    if(m.includes('anomali')||m.includes('reject')||m.includes('hold')) return '🔍 **Status Anomali Aktif:**\n\n• Critical: 1 SKU (SKU-006 — reject spike)\n• High: 2 SKU (SKU-004, SKU-007)\n• Medium: 1 SKU (SKU-003 — stok kritis)\n• Low: 2 SKU\n\nAnomali terberat: SKU-006 dengan reject rate 16.2%. Lakukan investigasi QC segera.';
+    return '👋 Saya dapat membantu dengan:\n• Analisis risiko inventaris\n• Status stok dan restocking\n• Informasi anomali aktif\n• Rekomendasi tindakan\n\nCoba tanya: "SKU mana yang paling berisiko minggu ini?"';
+  };
+
+  return (
+    <div className="panel" style={{display:'flex',flexDirection:'column'}}>
+      <div className="panel-header">
+        <div className="panel-title">
+          <div className="panel-dot" style={{background:'var(--teal)',boxShadow:'0 0 6px var(--teal)'}}></div>
+          AI Insight Assistant
+          {!backendAvailable && <span style={{fontSize:10,color:'var(--amber)',fontFamily:'var(--font-mono)',marginLeft:4}}>[Mode Offline]</span>}
+        </div>
+        <span className="tag tag-teal" style={{fontSize:10}}>GPT-4o / Claude</span>
+      </div>
+      <div className="chat-messages">
+        {msgs.map((m,i)=>(
+          <div key={i} className={`chat-msg ${m.role}`} style={{whiteSpace:'pre-wrap'}}>{m.text}</div>
+        ))}
+        {loading && <div className="chat-msg bot typing">Asisten sedang menganalisis data inventaris...</div>}
+        <div ref={endRef}></div>
+      </div>
+      <div className="quick-btns">
+        {QUICK.map(q=>(
+          <button key={q} className="quick-btn" onClick={()=>sendMsg(q)}>{q}</button>
+        ))}
+      </div>
+      <div className="chat-input-row">
+        <input className="chat-input" placeholder="Tanyakan sesuatu tentang inventaris..." value={input}
+          onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&sendMsg(input)}/>
+        <button className="chat-send" onClick={()=>sendMsg(input)} disabled={loading||!input.trim()}>
+          Kirim
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+// MAIN APP
+// ──────────────────────────────────────────────
+function App(){
+  const [summary, setSummary] = useState(null);
+  const [anomalies, setAnomalies] = useState([]);
+  const [selectedSku, setSelectedSku] = useState('SKU-006');
+  const [chartData, setChartData] = useState(null);
+  const [decision, setDecision] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [backend, setBackend] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+
+  const loadAll = useCallback(async(useMock=false)=>{
+    setLoading(true);
+    try{
+      if(!useMock){
+        const s = await apiFetch('/api/v1/dashboard/summary');
+        setSummary(s);
+        const snap = await apiFetch('/api/v1/inventory/snapshot');
+        setAnomalies(snap.snapshot?.map(item=>({
+          sku_id:item.sku_id,sku_name:item.sku_name,
+          severity:item.anomaly_severity||'Normal',
+          severity_color:item.anomaly_severity_color||'#22c55e',
+          is_anomaly:item.is_anomaly||false,
+          current_reject_rate:item.reject_rate||0,
+          current_hold_ratio:(item.hold_qty||0)/(item.stock_level||1),
+          current_stock_level:item.stock_level||0,
+          triggered_rules:[],anomaly_types:[],
+        }))||[]);
+        setBackend(true);
+      } else {
+        setSummary(MOCK.summary);
+        setAnomalies(genMockAnomalies());
+        setBackend(false);
+      }
+      setLastRefresh(new Date());
+    }catch(e){
+      setSummary(MOCK.summary);
+      setAnomalies(genMockAnomalies());
+      setBackend(false);
+    }
+    setLoading(false);
+  },[]);
+
+  const loadSku = useCallback(async(skuId, useMock=false)=>{
+    setChartData(null); setDecision(null);
+    try{
+      if(!useMock && backend){
+        const [chart, dec] = await Promise.all([
+          apiFetch(`/api/v1/chart/${skuId}/stock?days=30&include_forecast=true`),
+          apiFetch(`/api/v1/sku/${skuId}/decision`),
+        ]);
+        setChartData(chart); setDecision(dec);
+      } else {
+        await new Promise(r=>setTimeout(r,300));
+        setChartData(genMockChart(skuId));
+        setDecision(MOCK.decisions[skuId]||{
+          sku_id:skuId,sku_name:MOCK.skus.find(s=>s.sku_id===skuId)?.sku_name||skuId,
+          category:'Komponen',recommended_action:'RESTOCKING',action_priority:'Minggu Ini',
+          confidence_score:72.5,risk_level:'Sedang',
+          reasoning_path:['📉 Stok diprediksi mendekati reorder point dalam 12 hari.',
+            '✅ Tidak ada anomali signifikan terdeteksi.',
+            '🟡 KEPUTUSAN: RESTOCKING TERENCANA karena tren konsumsi meningkat.'],
+          key_factors:{'Stok Saat Ini':'N/A','Reject Rate':'2.5%','Lead Time Supplier':'14 hari','Tren Stok':'Turun','Anomali Severity':'Normal','Akurasi Prediksi':'82%'},
+          action_detail:`Jadwalkan pemesanan ulang ${skuId} dalam minggu ini sesuai lead time supplier.`,
+          estimated_impact:'Menjaga ketersediaan stok untuk kelancaran produksi.',
+          estimated_loss_if_ignored:null,feedback_status:'pending',
+          generated_at:new Date().toISOString()
+        });
+      }
+    }catch(e){
+      setChartData(genMockChart(skuId));
+    }
+  },[backend]);
+
+  useEffect(()=>{ loadAll(); },[]);
+  useEffect(()=>{ if(!loading) loadSku(selectedSku, !backend); },[selectedSku, loading]);
+
+  const handleFeedback = async(skuId, action, type)=>{
+    if(backend){
+      try{
+        await apiFetch('/api/v1/feedback',{method:'POST',
+          body:JSON.stringify({sku_id:skuId,decision_action:action,feedback:type,operator_id:'operator_demo'})});
+      }catch(e){}
+    }
+  };
+
+  const ad = summary?.action_distribution||{};
+  const sd = summary?.severity_distribution||{};
+  const activeAnomalies = anomalies.filter(a=>a.is_anomaly||a.severity!=='Normal');
+
+  return (
+    <div className="app">
+      {/* HEADER */}
+      <header className="header">
+        <div className="header-brand">
+          <div className="header-logo">IA</div>
+          <div>
+            <div className="header-title">Inventra AI</div>
+            <div className="header-sub">Intelligent Inventory Decision Engine</div>
+          </div>
+        </div>
+        <div className="header-right">
+          <div className="health-pill">
+            <div className="health-dot" style={{background:summary?.health_score>=70?'var(--green)':summary?.health_score>=40?'var(--amber)':'var(--red)'}}></div>
+            <span className="health-text">System Health</span>
+            <span className="health-score">{summary?.health_score||0}%</span>
+          </div>
+          <span className="tag" style={{background:backend?'var(--green-dim)':'var(--amber-dim)',color:backend?'var(--green)':'var(--amber)',fontSize:10}}>
+            {backend?'● API Connected':'● Demo Mode'}
+          </span>
+          <span className="timestamp">{lastRefresh.toLocaleTimeString('id-ID')}</span>
+          <button className="refresh-btn" onClick={()=>loadAll()}>↻ Refresh</button>
+        </div>
+      </header>
+
+      {/* MAIN */}
+      <main className="main">
+        {/* KPI ROW */}
+        <div className="kpi-row">
+          <KPICard label="Total SKU Terpantau" value={summary?.total_skus||'—'} accent="teal"
+            sub="Semua kategori inventaris" badge="Aktif" badgeDir="up"/>
+          <KPICard label="Anomali Aktif" value={summary?.anomaly_active||0} accent="red"
+            sub={`${sd.Critical||0} Critical · ${sd.High||0} High · ${sd.Medium||0} Medium`}
+            badge={summary?.anomaly_active>0?'Perlu Perhatian':null} badgeDir="down"/>
+          <KPICard label="Butuh Restocking" value={ad.RESTOCKING||0} accent="amber"
+            sub={`+${ad.REDISTRIBUSI||0} Redistribusi`}
+            badge={ad.RESTOCKING>5?'Kritis':null} badgeDir="down"/>
+          <KPICard label="Proses Monitor" value={ad.MONITOR||0} accent="blue"
+            sub={`${ad.HOLD||0} status Hold aktif`} badge="Normal" badgeDir="up"/>
+        </div>
+
+        {/* CHART + ANOMALY */}
+        <div className="grid-2">
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">
+                <div className="panel-dot" style={{background:'var(--teal)'}}></div>
+                Tren Stok & Proyeksi
+              </div>
+              <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                <span className="tag tag-teal" style={{fontSize:10}}>PREDICT Layer</span>
+                {chartData && <span style={{fontSize:10,color:'var(--text3)',fontFamily:'var(--font-mono)'}}>14-hari forecast</span>}
+              </div>
+            </div>
+            <div className="sku-tabs">
+              {MOCK.skus.map(s=>{
+                const sev = anomalies.find(a=>a.sku_id===s.sku_id)?.severity||'Normal';
+                const colors={Normal:'#22c55e',Low:'#eab308',Medium:'#f97316',High:'#f0485a',Critical:'#a78bfa'};
+                return (
+                  <button key={s.sku_id} className={`sku-tab ${selectedSku===s.sku_id?'active':''}`}
+                    onClick={()=>setSelectedSku(s.sku_id)}>
+                    <span style={{color:selectedSku===s.sku_id?'#000':colors[sev]||'#22c55e',marginRight:4,fontSize:8}}>●</span>
+                    {s.sku_id}
+                  </button>
+                );
+              })}
+            </div>
+            <StockChart data={chartData} skuName={chartData?.sku_name||selectedSku}/>
+          </div>
+          <AnomalyPanel anomalies={anomalies} selectedSku={selectedSku} onSelect={setSelectedSku}/>
+        </div>
+
+        {/* DECISION + CHAT */}
+        <div className="grid-bottom">
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">
+                <div className="panel-dot" style={{background:'var(--purple)'}}></div>
+                AI Decision Recommendation
+              </div>
+              <span className="tag tag-teal" style={{fontSize:10}}>DECIDE Layer · XAI</span>
+            </div>
+            <DecisionWidget decision={decision} onFeedback={handleFeedback}/>
+          </div>
+          <ChatWindow backendAvailable={backend}/>
+        </div>
+
+        {/* CRITICAL SKUs TABLE */}
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">
+              <div className="panel-dot" style={{background:'var(--amber)'}}></div>
+              Daftar SKU Prioritas — Semua Analisis
+            </div>
+            <span style={{fontSize:11,color:'var(--text3)',fontFamily:'var(--font-mono)'}}>
+              3-Layer Intelligence: Predict · Detect · Decide
+            </span>
+          </div>
+          <div style={{overflowX:'auto'}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead>
+                <tr style={{borderBottom:'1px solid var(--border)'}}>
+                  {['SKU ID','Nama Produk','Kategori','Severity','Tindakan','Prioritas','Risk','Confidence'].map(h=>(
+                    <th key={h} style={{padding:'10px 20px',textAlign:'left',fontFamily:'var(--font-mono)',fontSize:10,color:'var(--text3)',textTransform:'uppercase',letterSpacing:'.6px',whiteSpace:'nowrap'}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(summary?.critical_skus?.length>0?summary.critical_skus:MOCK.summary.critical_skus).map((sku,i)=>{
+                  const sev = anomalies.find(a=>a.sku_id===sku.sku_id)?.severity||sku.risk==='Kritis'?'Critical':'Normal';
+                  const sevColors={Critical:'#a78bfa',High:'#f0485a',Medium:'#f97316',Low:'#eab308',Normal:'#22c55e'};
+                  const actionColors={RESTOCKING:'var(--blue)',HOLD:'var(--red)',REDISTRIBUSI:'var(--amber)',MONITOR:'var(--green)'};
+                  const riskC={Kritis:'var(--purple)',Tinggi:'var(--red)',Sedang:'var(--amber)',Rendah:'var(--green)'};
+                  return (
+                    <tr key={sku.sku_id} style={{borderBottom:'1px solid var(--border)',cursor:'pointer',transition:'background .1s'}}
+                      onClick={()=>setSelectedSku(sku.sku_id)}
+                      onMouseEnter={e=>e.currentTarget.style.background='var(--bg2)'}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <td style={{padding:'10px 20px',fontFamily:'var(--font-mono)',color:'var(--teal)'}}>{sku.sku_id}</td>
+                      <td style={{padding:'10px 20px',color:'var(--text)',fontWeight:500}}>{sku.sku_name}</td>
+                      <td style={{padding:'10px 20px',color:'var(--text2)'}}>{MOCK.skus.find(s=>s.sku_id===sku.sku_id)?.category||'—'}</td>
+                      <td style={{padding:'10px 20px'}}>
+                        <span className={`severity-badge sev-${sev}`}>{sev}</span>
+                      </td>
+                      <td style={{padding:'10px 20px'}}>
+                        <span style={{color:actionColors[sku.action],fontFamily:'var(--font-mono)',fontWeight:600,fontSize:11}}>{sku.action}</span>
+                      </td>
+                      <td style={{padding:'10px 20px',color:'var(--text2)',fontSize:11}}>{sku.priority}</td>
+                      <td style={{padding:'10px 20px'}}>
+                        <span style={{color:riskC[sku.risk]||'var(--text2)',fontFamily:'var(--font-mono)',fontSize:11,fontWeight:600}}>{sku.risk}</span>
+                      </td>
+                      <td style={{padding:'10px 20px'}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <div style={{flex:1,height:4,background:'var(--bg0)',borderRadius:2,minWidth:60}}>
+                            <div style={{height:'100%',borderRadius:2,width:sku.confidence+'%',
+                              background:sku.confidence>=80?'#22c55e':sku.confidence>=60?'#f5a623':'#f0485a',transition:'width .4s'}}></div>
+                          </div>
+                          <span style={{fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text2)',minWidth:35}}>{sku.confidence?.toFixed(1)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* FOOTER */}
+        <div style={{textAlign:'center',padding:'20px 0',borderTop:'1px solid var(--border)',
+          fontFamily:'var(--font-mono)',fontSize:11,color:'var(--text3)',display:'flex',justifyContent:'space-between'}}>
+          <span>Inventra AI v1.0.0 — Intelligent Inventory Decision Engine</span>
+          <span>Manufaktur & Energi · Dicoding AI Impact Challenge 2025</span>
+          <span>Predict · Detect · Decide · Explain</span>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
